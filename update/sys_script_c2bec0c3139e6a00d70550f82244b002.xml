@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<record_update sys_domain="global" table="sys_script">
+    <sys_script action="INSERT_OR_UPDATE">
+        <abort_action>false</abort_action>
+        <access>package_private</access>
+        <action_delete>false</action_delete>
+        <action_insert>true</action_insert>
+        <action_query>false</action_query>
+        <action_update>false</action_update>
+        <active>true</active>
+        <add_message>false</add_message>
+        <advanced>true</advanced>
+        <change_fields>false</change_fields>
+        <client_callable>false</client_callable>
+        <collection>sys_email</collection>
+        <condition>current.type == 'send-ignored' &amp;&amp; current.subject.indexOf('i18n') != -1</condition>
+        <description/>
+        <execute_function>false</execute_function>
+        <filter_condition/>
+        <is_rest>false</is_rest>
+        <message/>
+        <name>Translate</name>
+        <order>200</order>
+        <priority>100</priority>
+        <rest_method/>
+        <rest_method_text/>
+        <rest_service/>
+        <rest_service_text/>
+        <rest_variables/>
+        <role_conditions/>
+        <script><![CDATA[(function executeRule(current, previous /*null when async*/) {
+	
+	var globalHelper = new global.OutEmailTransUtils();
+	
+	if (current.u_translation) {
+		
+		// The translation langauge has already been identified by the logic below, so execute it.
+		translateEmail ();
+		gs.info('current.to ' + current.direct);
+		gs.info('current.subject = ' + current.subject + '  current.body = ' + current.body);
+		gs.info('current.type = ' + current.type);
+	    var ret = globalHelper.updateRecord(current);
+		gs.info('return code = ' + ret);
+		
+	}
+	else {
+		
+		//
+		// Segregate recipients by language, and create new new emails by language if necessary
+		// Interesting problem is if the lanaguges of the CC and BCC don't have a match in the To line?
+		// Will an email go out if the addressed To: line is empty?
+		//
+		
+		var recipientsByLang = segregateAddressesByLang(current.recipients.toString());
+		var blindByLang = segregateAddressesByLang(current.blind_copied.toString());
+		var copiedByLang = segregateAddressesByLang(current.copied.toString());
+		
+		
+		// Account for all the addressed languages
+		var languageHash = {};
+		var languages = [];
+		for (var i in recipientsByLang) {
+			if (recipientsByLang.hasOwnProperty(i)) {
+				languageHash[i] = true;
+			}
+		}
+		for (var j in copiedByLang) {
+			if (copiedByLang.hasOwnProperty(j)) {
+				languageHash[j] = true;
+			}
+		}
+		for (var k in blindByLang) {
+			if (blindByLang.hasOwnProperty(k)) {
+				languageHash[k] = true;
+			}
+		}
+		var haveEnglish = false;
+		for (var m in languageHash) {
+			if (languageHash.hasOwnProperty(m)) {
+				languages.push(m);
+				if (m == 'en')
+					haveEnglish = true;
+			}
+		}
+		
+		// Create new emails for translation if language count is 2 or more.
+		if (languages.length == 0) {
+			gs.error("No languages reported for email translation");
+		}
+		else if (languages.length == 1) {
+			if (languages[0] != 'en') {
+				current.u_translation = languages[0];
+				translateEmail();
+				var ret2 = globalHelper.updateRecord(current);
+				gs.info('ret2 = ' + ret2);
+			}
+		}
+		else {
+			
+			
+			
+			var x;
+			if (haveEnglish) {
+				
+				for (x = 0; x < languages.length; x++) {
+					
+					if (languages[x] != 'en') {
+						current.recipients = recipientsByLang[languages[x]];	
+						current.blind_copied = blindByLang[languages[x]];
+						current.copied = copiedByLang[languages[x]];
+						current.u_translation = languages[x];
+						current.type = "send-ready";
+						globalHelper.insertRecord(current);
+					}
+				}
+				
+				// Just fix recipent lists. No translation needed.
+				current.recipients = recipientsByLang['en'];
+				current.blind_copied = blindByLang['en'];
+				current.copied = copiedByLang['en'];
+				current.u_translation = '';
+				current.type = "send-ready";
+				var ret4 = globalHelper.updateRecord(current);
+				gs.info('ret4 = ' + ret4);
+
+			}
+			else {
+				
+				for (x = 1; x < languages.length; x++) {
+						
+					current.recipients = recipientsByLang[languages[x]];
+					current.blind_copied = blindByLang[languages[x]];
+					current.copied = copiedByLang[languages[x]];
+					current.u_translation = languages[x];
+					current.type = "send-ready";
+					globalHelper.insertRecord(current);
+					
+				}
+				
+				current.recipients = recipientsByLang[languages[0]];
+				current.blind_copied = blindByLang[languages[0]];
+				current.copied = copiedByLang[languages[0]];
+				current.u_translation = languages[0];
+				translateEmail ();
+		     	 var ret3 = globalHelper.updateRecord(current);
+				 gs.info('ret3 = ' + ret3);
+				
+			}
+		}
+	}
+})(current, previous);
+
+function segregateAddressesByLang(addressesString) {
+	// addressesString is a comma seperated string of email addresses
+	// returns an object where the key is language, and the value is a comma seperated address list.
+	
+	var addressesByLang = {};
+	if (!addressesString)
+		return addressesByLang;
+		
+	var addresses = addressesString.split(',');
+	
+	var addressedUser =  new GlideRecord('sys_user');
+	var lang = '';
+	for (var idx in addresses) {
+		addressedUser.initialize();
+		lang = '';
+		if (addressedUser.get('email', addresses[idx])) {
+			lang = addressedUser.preferred_language.toString();
+			if (lang) {
+				if (!addressesByLang[lang]) {
+					addressesByLang[lang] = addresses[idx];
+				}
+				else {
+					addressesByLang[lang] = addressesByLang[lang] +
+					',' + addresses[idx];
+				}
+			}
+		}
+		if (!lang) {
+			if (!addressesByLang['en']) {
+				addressesByLang['en'] = addresses[idx];
+			}
+			else {
+				addressesByLang['en'] = addressesByLang['en'] +
+				',' + addresses[idx];
+			}
+		}
+	}
+	return addressesByLang;
+}
+
+function translateEmail () {
+	
+	// Text for translation must be encapsulated by the following markers
+	var preamble = 'i18n[';
+	var postamble = ']i18n';
+	
+	
+	if (!current.u_translation)
+		return; // failsafe
+	
+//	var gt = new global.GoogleTranslate();
+	var oet = new global.OutEmailTransUtils();
+	
+	//
+	// Subject
+	//
+	
+	var subjectSplits = current.subject.split(preamble);
+	var textSplit = '';
+	var textToTranslate = '';
+	var translatedText = '';
+	for (var i = 1; i < subjectSplits.length; i++) {
+		textSplit = subjectSplits[i].split(postamble);
+		if (textSplit.length == 2) {
+			textToTranslate = textSplit[0];
+//			translatedText =  gt.translate(current.u_translation, textToTranslate, "en");	
+			translatedText = oet.callGoogle(current.u_translation, textToTranslate, "en");
+			textSplit[0] = translatedText;
+			
+			subjectSplits[i] = textSplit.join('');
+
+		}
+		else {
+			gs.error("Unbalanced use of i18n text markers in email subject!");
+			break;
+		}
+	}
+	current.subject = subjectSplits.join('');
+	
+	//
+	// Body
+	//
+	
+	var bodySplits = current.body.split(preamble);
+	for (i = 1; i < bodySplits.length; i++) {
+		textSplit = bodySplits[i].split(postamble);
+		if (textSplit.length == 2) {
+			textToTranslate = textSplit[0];
+//			translatedText =  gt.translate(current.u_translation, textToTranslate, "en");
+			translatedText = oet.callGoogle(current.u_translation, textToTranslate, "en");
+			textSplit[0] = translatedText;
+			
+			bodySplits[i] = textSplit.join('');
+		}
+		else {
+			gs.error("Unbalanced use of i18n text markers in email body!");
+			break;
+		}
+	}
+	current.body = bodySplits.join('');
+	current.type = "send-ready";
+//	var ret2 = oet.updateRecord(current);
+//	gs.info('ret2 = ' + ret2);
+	
+}]]></script>
+        <sys_class_name>sys_script</sys_class_name>
+        <sys_created_by>dave.knight</sys_created_by>
+        <sys_created_on>2016-10-10 15:04:14</sys_created_on>
+        <sys_customer_update>true</sys_customer_update>
+        <sys_domain>global</sys_domain>
+        <sys_domain_path>/</sys_domain_path>
+        <sys_id>c2bec0c3139e6a00d70550f82244b002</sys_id>
+        <sys_mod_count>75</sys_mod_count>
+        <sys_name>Translate</sys_name>
+        <sys_overrides/>
+        <sys_package display_value="Outbound Email Translator" source="x_snc_mail_trans">77adbb7e135e6a00d70550f82244b005</sys_package>
+        <sys_policy/>
+        <sys_replace_on_upgrade>false</sys_replace_on_upgrade>
+        <sys_scope display_value="Outbound Email Translator">77adbb7e135e6a00d70550f82244b005</sys_scope>
+        <sys_update_name>sys_script_c2bec0c3139e6a00d70550f82244b002</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2016-10-18 22:47:33</sys_updated_on>
+        <template/>
+        <when>async</when>
+    </sys_script>
+    <sys_translated_text action="delete_multiple" query="documentkey=c2bec0c3139e6a00d70550f82244b002"/>
+</record_update>
