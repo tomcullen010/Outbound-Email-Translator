@@ -32,6 +32,8 @@
 	
 	var globalHelper = new global.OutEmailTransUtils();
 	
+	gs.info('in Translate Business Rule .. current.u_translation = ' + current.u_translation);
+	
 	if (current.u_translation) {
 		
 		// The translation langauge has already been identified by the logic below, so execute it.
@@ -39,8 +41,8 @@
 		gs.info('current.to ' + current.direct);
 		gs.info('current.subject = ' + current.subject + '  current.body = ' + current.body);
 		gs.info('current.type = ' + current.type);
-	    var ret = globalHelper.updateRecord(current);
-		gs.info('return code = ' + ret);
+	    var ret1 = globalHelper.updateRecord(current);
+		gs.info('ret1 = ' + ret1);
 		
 	}
 	else {
@@ -83,17 +85,20 @@
 			}
 		}
 		
+		gs.info('languages lenght = ' + languages.length);
+		gs.info('languages[0] = ' + languages[0]);
+		
 		// Create new emails for translation if language count is 2 or more.
 		if (languages.length == 0) {
 			gs.error("No languages reported for email translation");
 		}
 		else if (languages.length == 1) {
-			if (languages[0] != 'en') {
+			gs.info('in lenght = 1 .. ');
 				current.u_translation = languages[0];
 				translateEmail();
 				var ret2 = globalHelper.updateRecord(current);
 				gs.info('ret2 = ' + ret2);
-			}
+			
 		}
 		else {
 			
@@ -101,6 +106,8 @@
 			
 			var x;
 			if (haveEnglish) {
+				
+				gs.info('we haveEnglish');
 				
 				for (x = 0; x < languages.length; x++) {
 					
@@ -110,6 +117,7 @@
 						current.copied = copiedByLang[languages[x]];
 						current.u_translation = languages[x];
 						current.type = "send-ready";
+//should be update
 						globalHelper.insertRecord(current);
 					}
 				}
@@ -118,8 +126,11 @@
 				current.recipients = recipientsByLang['en'];
 				current.blind_copied = blindByLang['en'];
 				current.copied = copiedByLang['en'];
-				current.u_translation = '';
+				current.u_translation = 'en';
 				current.type = "send-ready";
+				gs.info('translate English - before translate ' + current.u_translation);
+				translateEmail();
+				gs.info('translate English - after translate ' + current.u_translation);
 				var ret4 = globalHelper.updateRecord(current);
 				gs.info('ret4 = ' + ret4);
 
@@ -133,6 +144,7 @@
 					current.copied = copiedByLang[languages[x]];
 					current.u_translation = languages[x];
 					current.type = "send-ready";
+//should be update					
 					globalHelper.insertRecord(current);
 					
 				}
@@ -215,8 +227,16 @@ function translateEmail () {
 		textSplit = subjectSplits[i].split(postamble);
 		if (textSplit.length == 2) {
 			textToTranslate = textSplit[0];
-//			translatedText =  gt.translate(current.u_translation, textToTranslate, "en");	
-			translatedText = oet.callGoogle(current.u_translation, textToTranslate, "en");
+			gs.info('current u translation = ' + current.u_translation);
+            if(current.u_translation != 'en') {
+			//	translatedText =  gt.translate(current.u_translation, textToTranslate, "en");	
+			    translatedText = oet.callGoogle(current.u_translation, textToTranslate, "en");	
+			}
+			else {
+				translatedText = textToTranslate;
+				gs.info('english -> ' + translatedText);
+			}
+			
 			textSplit[0] = translatedText;
 			
 			subjectSplits[i] = textSplit.join('');
@@ -228,6 +248,7 @@ function translateEmail () {
 		}
 	}
 	current.subject = subjectSplits.join('');
+	gs.info('current.subject = ' + current.subject);
 	
 	//
 	// Body
@@ -238,8 +259,15 @@ function translateEmail () {
 		textSplit = bodySplits[i].split(postamble);
 		if (textSplit.length == 2) {
 			textToTranslate = textSplit[0];
-//			translatedText =  gt.translate(current.u_translation, textToTranslate, "en");
-			translatedText = oet.callGoogle(current.u_translation, textToTranslate, "en");
+			if(current.u_translation != 'en') {
+			//	translatedText =  gt.translate(current.u_translation, textToTranslate, "en");
+			translatedText = oet.callGoogle(current.u_translation, textToTranslate, "en");	
+			}
+			else {
+				translatedText = textToTranslate;
+				gs.info('english -> ' + translatedText);
+			}
+			
 			textSplit[0] = translatedText;
 			
 			bodySplits[i] = textSplit.join('');
@@ -251,8 +279,7 @@ function translateEmail () {
 	}
 	current.body = bodySplits.join('');
 	current.type = "send-ready";
-//	var ret2 = oet.updateRecord(current);
-//	gs.info('ret2 = ' + ret2);
+
 	
 }]]></script>
         <sys_class_name>sys_script</sys_class_name>
@@ -262,7 +289,7 @@ function translateEmail () {
         <sys_domain>global</sys_domain>
         <sys_domain_path>/</sys_domain_path>
         <sys_id>c2bec0c3139e6a00d70550f82244b002</sys_id>
-        <sys_mod_count>75</sys_mod_count>
+        <sys_mod_count>82</sys_mod_count>
         <sys_name>Translate</sys_name>
         <sys_overrides/>
         <sys_package display_value="Outbound Email Translator" source="x_snc_mail_trans">77adbb7e135e6a00d70550f82244b005</sys_package>
@@ -271,7 +298,7 @@ function translateEmail () {
         <sys_scope display_value="Outbound Email Translator">77adbb7e135e6a00d70550f82244b005</sys_scope>
         <sys_update_name>sys_script_c2bec0c3139e6a00d70550f82244b002</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2016-10-18 22:47:33</sys_updated_on>
+        <sys_updated_on>2016-10-21 11:14:26</sys_updated_on>
         <template/>
         <when>async</when>
     </sys_script>
