@@ -7,7 +7,7 @@
         <action_insert>true</action_insert>
         <action_query>false</action_query>
         <action_update>false</action_update>
-        <active>true</active>
+        <active>false</active>
         <add_message>false</add_message>
         <advanced>true</advanced>
         <change_fields>false</change_fields>
@@ -19,7 +19,7 @@
         <filter_condition/>
         <is_rest>false</is_rest>
         <message/>
-        <name>Translate</name>
+        <name>Translate2</name>
         <order>200</order>
         <priority>100</priority>
         <rest_method/>
@@ -32,15 +32,11 @@
 	
 	var globalHelper = new global.OutEmailTransUtils();
 	
-	gs.info('in Translate Business Rule .. current.u_translation = ' + current.u_translation);
 	
 	if (current.u_translation) {
 		
 		// The translation langauge has already been identified by the logic below, so execute it.
 		translateEmail ();
-		gs.info('current.to ' + current.direct);
-		gs.info('current.subject = ' + current.subject + '  current.body = ' + current.body);
-		gs.info('current.type = ' + current.type);
 	    var ret1 = globalHelper.updateRecord(current);
 		gs.info('ret1 = ' + ret1);
 		
@@ -85,58 +81,14 @@
 			}
 		}
 		
-		gs.info('languages lenght = ' + languages.length);
-		gs.info('languages[0] = ' + languages[0]);
 		
-		// Create new emails for translation if language count is 2 or more.
+		// Create new emails for translation 
 		if (languages.length == 0) {
 			gs.error("No languages reported for email translation");
 		}
-		else if (languages.length == 1) {
-			gs.info('in lenght = 1 .. ');
-				current.u_translation = languages[0];
-				translateEmail();
-				var ret2 = globalHelper.updateRecord(current);
-				gs.info('ret2 = ' + ret2);
-			
-		}
 		else {
-			
-			
-			
-			var x;
-			if (haveEnglish) {
-				
-				gs.info('we haveEnglish');
-				
-				for (x = 0; x < languages.length; x++) {
 					
-					if (languages[x] != 'en') {
-						current.recipients = recipientsByLang[languages[x]];	
-						current.blind_copied = blindByLang[languages[x]];
-						current.copied = copiedByLang[languages[x]];
-						current.u_translation = languages[x];
-						current.type = "send-ready";
-//should be update
-						globalHelper.insertRecord(current);
-					}
-				}
-				
-				// Just fix recipent lists. No translation needed.
-				current.recipients = recipientsByLang['en'];
-				current.blind_copied = blindByLang['en'];
-				current.copied = copiedByLang['en'];
-				current.u_translation = 'en';
-				current.type = "send-ready";
-				gs.info('translate English - before translate ' + current.u_translation);
-				translateEmail();
-				gs.info('translate English - after translate ' + current.u_translation);
-				var ret4 = globalHelper.updateRecord(current);
-				gs.info('ret4 = ' + ret4);
-
-			}
-			else {
-				
+			var x;				
 				for (x = 1; x < languages.length; x++) {
 						
 					current.recipients = recipientsByLang[languages[x]];
@@ -144,22 +96,13 @@
 					current.copied = copiedByLang[languages[x]];
 					current.u_translation = languages[x];
 					current.type = "send-ready";
-//should be update					
-					globalHelper.insertRecord(current);
+                    var ret2 = globalHelper.updateRecord(current);
+				    gs.info('ret2 = ' + ret2);
 					
-				}
-				
-				current.recipients = recipientsByLang[languages[0]];
-				current.blind_copied = blindByLang[languages[0]];
-				current.copied = copiedByLang[languages[0]];
-				current.u_translation = languages[0];
-				translateEmail ();
-		     	 var ret3 = globalHelper.updateRecord(current);
-				 gs.info('ret3 = ' + ret3);
-				
+				}	
 			}
 		}
-	}
+
 })(current, previous);
 
 function segregateAddressesByLang(addressesString) {
@@ -227,14 +170,12 @@ function translateEmail () {
 		textSplit = subjectSplits[i].split(postamble);
 		if (textSplit.length == 2) {
 			textToTranslate = textSplit[0];
-			gs.info('current u translation = ' + current.u_translation);
             if(current.u_translation != 'en') {
 			//	translatedText =  gt.translate(current.u_translation, textToTranslate, "en");	
 			    translatedText = oet.callGoogle(current.u_translation, textToTranslate, "en");	
 			}
 			else {
 				translatedText = textToTranslate;
-				gs.info('english -> ' + translatedText);
 			}
 			
 			textSplit[0] = translatedText;
@@ -248,7 +189,6 @@ function translateEmail () {
 		}
 	}
 	current.subject = subjectSplits.join('');
-	gs.info('current.subject = ' + current.subject);
 	
 	//
 	// Body
@@ -265,7 +205,6 @@ function translateEmail () {
 			}
 			else {
 				translatedText = textToTranslate;
-				gs.info('english -> ' + translatedText);
 			}
 			
 			textSplit[0] = translatedText;
@@ -283,24 +222,24 @@ function translateEmail () {
 	
 }]]></script>
         <sys_class_name>sys_script</sys_class_name>
-        <sys_created_by>dave.knight</sys_created_by>
-        <sys_created_on>2016-10-10 15:04:14</sys_created_on>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2016-10-21 13:25:56</sys_created_on>
         <sys_customer_update>true</sys_customer_update>
         <sys_domain>global</sys_domain>
         <sys_domain_path>/</sys_domain_path>
-        <sys_id>c2bec0c3139e6a00d70550f82244b002</sys_id>
-        <sys_mod_count>84</sys_mod_count>
-        <sys_name>Translate</sys_name>
+        <sys_id>63e26062132e22001cdf5aef3244b026</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>Translate2</sys_name>
         <sys_overrides/>
         <sys_package display_value="Outbound Email Translator" source="x_snc_mail_trans">77adbb7e135e6a00d70550f82244b005</sys_package>
         <sys_policy/>
         <sys_replace_on_upgrade>false</sys_replace_on_upgrade>
         <sys_scope display_value="Outbound Email Translator">77adbb7e135e6a00d70550f82244b005</sys_scope>
-        <sys_update_name>sys_script_c2bec0c3139e6a00d70550f82244b002</sys_update_name>
+        <sys_update_name>sys_script_63e26062132e22001cdf5aef3244b026</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2016-10-21 13:30:05</sys_updated_on>
+        <sys_updated_on>2016-10-21 13:30:14</sys_updated_on>
         <template/>
         <when>async</when>
     </sys_script>
-    <sys_translated_text action="delete_multiple" query="documentkey=c2bec0c3139e6a00d70550f82244b002"/>
+    <sys_translated_text action="delete_multiple" query="documentkey=63e26062132e22001cdf5aef3244b026"/>
 </record_update>
