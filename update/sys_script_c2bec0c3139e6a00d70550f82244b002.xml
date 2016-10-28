@@ -207,6 +207,8 @@ function translateEmail () {
 	// Text for translation must be encapsulated by the following markers
 	var preamble = 'i18n[';
 	var postamble = ']i18n';
+	var addMessage = false;
+	var infoMessage = '<p> ** This messages was translated using Google Translate ** <p>';
 	
 	
 	if (!current.u_translation)
@@ -231,6 +233,7 @@ function translateEmail () {
             if(current.u_translation != 'en') {
 			//	translatedText =  gt.translate(current.u_translation, textToTranslate, "en");	
 			    translatedText = oet.callGoogle(current.u_translation, textToTranslate, "en");	
+				addMessage = true; // translation made .. add Tranlation message to body
 			}
 			else {
 				translatedText = textToTranslate;
@@ -277,7 +280,11 @@ function translateEmail () {
 			break;
 		}
 	}
+		
 	current.body = bodySplits.join('');
+	if(addMessage){
+       current.body = current.body + infoMessage;
+	}
 	current.type = "send-ready";
 	current.state = "Ready";
 
@@ -290,7 +297,7 @@ function translateEmail () {
         <sys_domain>global</sys_domain>
         <sys_domain_path>/</sys_domain_path>
         <sys_id>c2bec0c3139e6a00d70550f82244b002</sys_id>
-        <sys_mod_count>88</sys_mod_count>
+        <sys_mod_count>95</sys_mod_count>
         <sys_name>Translate</sys_name>
         <sys_overrides/>
         <sys_package display_value="Outbound Email Translator" source="x_snc_mail_trans">77adbb7e135e6a00d70550f82244b005</sys_package>
@@ -299,7 +306,7 @@ function translateEmail () {
         <sys_scope display_value="Outbound Email Translator">77adbb7e135e6a00d70550f82244b005</sys_scope>
         <sys_update_name>sys_script_c2bec0c3139e6a00d70550f82244b002</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2016-10-25 15:46:23</sys_updated_on>
+        <sys_updated_on>2016-10-28 11:51:56</sys_updated_on>
         <template/>
         <when>async</when>
     </sys_script>
